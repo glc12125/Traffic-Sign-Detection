@@ -7,18 +7,53 @@ import imutils
 import argparse
 import os
 import math
+import hwcounter
 
 from classification import training, getLabel
 
-SIGNS = ["ERROR",
-        "STOP",
-        "TURN LEFT",
-        "TURN RIGHT",
-        "DO NOT TURN LEFT",
-        "DO NOT TURN RIGHT",
-        "ONE WAY",
-        "SPEED LIMIT",
-        "OTHER"]
+SIGNS = ["speed limit 20 (prohibitory)",
+        "speed limit 30 (prohibitory)",
+        "speed limit 50 (prohibitory)",
+        "speed limit 60 (prohibitory)",
+        "speed limit 70 (prohibitory)",
+        "speed limit 80 (prohibitory)",
+        "restriction ends 80 (other)",
+        "speed limit 100 (prohibitory)",
+        "speed limit 120 (prohibitory)",
+        "no overtaking (prohibitory)",
+        "no overtaking (trucks) (prohibitory)",
+        "priority at next intersection (danger)",
+        "priority road (other)",
+        "give way (other)",
+        "stop (other)",
+        "no traffic both ways (prohibitory)",
+        "no trucks (prohibitory)",
+        "no entry (other)",
+        "danger (danger)",
+        "bend left (danger)",
+        "bend right (danger)",
+        "bend (danger)",
+        "uneven road (danger)",
+        "slippery road (danger)",
+        "road narrows (danger)",
+        "construction (danger)",
+        "traffic signal (danger)",
+        "pedestrian crossing (danger)",
+        "school crossing (danger)",
+        "cycles crossing (danger)",
+        "snow (danger)",
+        "animals (danger)",
+        "restriction ends (other)",
+        "go right (mandatory)",
+        "go left (mandatory)",
+        "go straight (mandatory)",
+        "go right or straight (mandatory)",
+        "go left or straight (mandatory)",
+        "keep right (mandatory)",
+        "keep left (mandatory)",
+        "roundabout (mandatory)",
+        "restriction ends (overtaking) (other)",
+        "restriction ends (overtaking (trucks)) (other)"]
 
 # Clean all previous file
 def clean_images():
@@ -173,10 +208,10 @@ def localization(image, min_size_components, similitary_contour_with_circle, mod
     text = ""
     sign_type = -1
     i = 0
-
+    
     if sign is not None:
         sign_type = getLabel(model, sign)
-        sign_type = sign_type if sign_type <= 8 else 8
+        sign_type = sign_type if sign_type <= 42 else 42
         text = SIGNS[sign_type]
         cv2.imwrite(str(count)+'_'+text+'.png', sign)
 
@@ -184,6 +219,7 @@ def localization(image, min_size_components, similitary_contour_with_circle, mod
         cv2.rectangle(original_image, coordinate[0],coordinate[1], (0, 255, 0), 1)
         font = cv2.FONT_HERSHEY_PLAIN
         cv2.putText(original_image,text,(coordinate[0][0], coordinate[0][1] -15), font, 1,(0,0,255),2,cv2.LINE_4)
+    
     return coordinate, original_image, sign_type, text
 
 def remove_line(img):
@@ -269,7 +305,10 @@ def main(args):
 
         print("Frame:{}".format(count))
         #image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        start = hwcounter.count()
         coordinate, image, sign_type, text = localization(frame, args.min_size_components, args.similitary_contour_with_circle, model, count, current_sign)
+        elapsed = hwcounter.count_end() - start
+        print('elapsed cycles: {}'.format(elapsed))
         if coordinate is not None:
             cv2.rectangle(image, coordinate[0],coordinate[1], (255, 255, 255), 1)
         print("Sign:{}".format(sign_type))

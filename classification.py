@@ -1,13 +1,69 @@
 import cv2
+from PIL import Image
 import numpy as np
 from matplotlib import pyplot as plt
+from skimage.transform import rescale, resize
 from os import listdir
+import csv
 # local modules
 from common import clock, mosaic
 
 #Parameter
 SIZE = 32
 CLASS_NUMBER = 13
+
+# function for reading the images
+# arguments: path to the traffic sign data, for example './GTSRB/Training'
+# returns: list of images, list of corresponding labels 
+def readTrafficSigns(rootpath):
+    '''Reads traffic sign data for German Traffic Sign Recognition Benchmark.
+
+    Arguments: path to the traffic sign data, for example './GTSRB/Training'
+    Returns:   list of images, list of corresponding labels'''
+    images = [] # images
+    labels = [] # corresponding labels
+    regions = [] # corresponding regions of the sign
+    # loop over all 42 classes
+    for c in range(0,43):
+        prefix = rootpath + '/' + format(c, '05d') + '/' # subdirectory for class
+        gtFile = open(prefix + 'GT-'+ format(c, '05d') + '.csv') # annotations file
+        gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
+        next(gtReader) # skip header
+        # loop over all images in current annotations file
+        for row in gtReader:
+            images.append(cv2.imread(prefix + row[0], 0)) # the 1th column is the filename
+            labels.append(int(row[7])) # the 8th column is the label
+            regions.append(row[3:7])
+        gtFile.close()
+    return images, labels, regions
+
+def resize_with_padding(im):
+    old_size = im.shape[:2]
+    ratio = float(SIZE)/max(old_size)
+    new_size = tuple([int(x*ratio) for x in old_size])
+    im = cv2.resize(im, (new_size[1], new_size[0]))
+
+    delta_w = SIZE - new_size[1]
+    delta_h = SIZE - new_size[0]
+    top, bottom = delta_h//2, delta_h-(delta_h//2)
+    left, right = delta_w//2, delta_w-(delta_w//2)
+
+    color = [0, 0, 0]
+    new_im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT,
+        value=color)
+    return new_im
+
+def load_gtsrb_dataset():
+    images, labels, regions = readTrafficSigns("/home/liangchuan/Development/data/gtsrb/GTSRB/Final_Training/Images")
+    for i in range(len(images)):
+        region = [int(x) for x in regions[i]]
+        images[i] = images[i][region[1]:region[3], region[0]:region[2]]
+        images[i] = cv2.resize(images[i], (SIZE, SIZE))
+        #cv2.imshow('Resized image', images[i])
+        #cv2.waitKey(1)
+        images[i] = np.reshape(images[i], [SIZE, SIZE])
+
+    return np.array(images), np.array(labels)
 
 def load_traffic_dataset():
     dataset = []
@@ -103,10 +159,12 @@ def get_hog() :
 
 
 def training():
-    print('Loading data from data.png ... ')
+    print('Loading data ... ')
     # Load data.
     #data, labels = load_data('data.png')
-    data, labels = load_traffic_dataset()
+    #data, labels = load_traffic_dataset()
+    data, labels = load_gtsrb_dataset()
+
     print(data.shape)
     print('Shuffle data ... ')
     # Shuffle data
@@ -136,10 +194,12 @@ def training():
     
     print('Training SVM model ...')
     model = SVM()
+    print(hog_descriptors_train.shape)
+    print(labels_train.shape)
     model.train(hog_descriptors_train, labels_train)
 
     print('Saving SVM model ...')
-    model.save('data_svm.dat')
+    model.save('data_svm_gtsrb.dat')
     return model
 
 def getLabel(model, data):
