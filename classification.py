@@ -158,7 +158,7 @@ def get_hog() :
     affine_flags = cv2.WARP_INVERSE_MAP|cv2.INTER_LINEAR
 
 
-def training():
+def training(save_name):
     print('Loading data ... ')
     # Load data.
     #data, labels = load_data('data.png')
@@ -194,12 +194,10 @@ def training():
     
     print('Training SVM model ...')
     model = SVM()
-    print(hog_descriptors_train.shape)
-    print(labels_train.shape)
     model.train(hog_descriptors_train, labels_train)
 
     print('Saving SVM model ...')
-    model.save('data_svm_gtsrb.dat')
+    model.save(save_name)
     return model
 
 def getLabel(model, data):

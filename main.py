@@ -57,10 +57,10 @@ SIGNS = ["speed limit 20 (prohibitory)",
 
 # Clean all previous file
 def clean_images():
-	file_list = os.listdir('./')
+	file_list = os.listdir('./detected/')
 	for file_name in file_list:
 		if '.png' in file_name:
-			os.remove(file_name)
+			os.remove('./detected/' + file_name)
 
 
 ### Preprocess image
@@ -208,12 +208,12 @@ def localization(image, min_size_components, similitary_contour_with_circle, mod
     text = ""
     sign_type = -1
     i = 0
-    
+
     if sign is not None:
         sign_type = getLabel(model, sign)
         sign_type = sign_type if sign_type <= 42 else 42
         text = SIGNS[sign_type]
-        cv2.imwrite(str(count)+'_'+text+'.png', sign)
+        cv2.imwrite('detected/' + str(count)+'_'+text+'.png', sign)
 
     if sign_type > 0 and sign_type != current_sign_type:        
         cv2.rectangle(original_image, coordinate[0],coordinate[1], (0, 255, 0), 1)
@@ -264,7 +264,11 @@ def main(args):
 	#Clean previous image    
     clean_images()
     #Training phase
-    model = training()
+    if not os.path.isfile('data_svm_gtsrb.yaml'):
+        model = training('data_svm_gtsrb.yaml')
+    else:
+        model = cv2.ml.SVM_load('data_svm_gtsrb.yaml')
+        print('Loaded model')
 
     vidcap = cv2.VideoCapture(args.file_name)
 
@@ -312,7 +316,7 @@ def main(args):
         if coordinate is not None:
             cv2.rectangle(image, coordinate[0],coordinate[1], (255, 255, 255), 1)
         print("Sign:{}".format(sign_type))
-        if sign_type > 0 and (not current_sign or sign_type != current_sign):
+        if sign_type > -1 and (not current_sign or sign_type != current_sign):
             current_sign = sign_type
             current_text = text
             top = int(coordinate[0][1]*1.05)
@@ -325,8 +329,8 @@ def main(args):
             font = cv2.FONT_HERSHEY_PLAIN
             cv2.putText(image,text,(coordinate[0][0], coordinate[0][1] -15), font, 1,(0,0,255),2,cv2.LINE_4)
 
-            tl = [left, top]
-            br = [right,bottom]
+            tl = [max(left,0), max(top,0)]
+            br = [min(right, width),min(bottom,height)]
             print(tl, br)
             current_size = math.sqrt(math.pow((tl[0]-br[0]),2) + math.pow((tl[1]-br[1]),2))
             # grab the ROI for the bounding box and convert it
